@@ -6,6 +6,16 @@ from django.shortcuts import HttpResponse, render
 
 class StarkHandler(object):
     display_list = []
+
+    def get_display_list(self):
+        """
+        获取页面上应该显示的列，预留的自定义扩展，例如根据用户的不同显示不同的列
+        :return:
+        """
+        value = []
+        value.extend(self.display_list)
+        return value
+
     def __init__(self, model_class, prev):
         self.model_class = model_class
         self.prev = prev
@@ -23,9 +33,10 @@ class StarkHandler(object):
         # self.models_class
 
         # 1. 处理表格的表头
+        display_list = self.get_display_list()
         header_list = []
-        if self.display_list:
-            for key in self.display_list:
+        if display_list:
+            for key in display_list:
                 verbose_name = self.model_class._meta.get_field(key).verbose_name
                 header_list.append(verbose_name)
         else:
@@ -36,8 +47,8 @@ class StarkHandler(object):
         body_list = []
         for row in data_list:
             tr_list = []
-            if self.display_list:
-                for key in self.display_list:
+            if display_list:
+                for key in display_list:
                     tr_list.append(getattr(row,key))
             else:
                 tr_list.append(row)
