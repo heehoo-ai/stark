@@ -7,6 +7,9 @@ from django.shortcuts import HttpResponse, render
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
+from stark.utils.pagination import Pagination
+
+
 def get_choice_text(title, field):
     """
     对于Stark组件中定义列时，choice如果想要显示中文信息，调用此方法
@@ -24,6 +27,8 @@ def get_choice_text(title, field):
 
 class StarkHandler(object):
     display_list = []
+
+    per_page_count = 1
 
     def display_edit(self, obj=None, is_header=False):
         if is_header:
@@ -58,14 +63,25 @@ class StarkHandler(object):
         :param request:
         :return:
         """
-        # 访问http://127.0.0.1:8000/stark/app01/depart/list/； self.model_class = app01.models.Depart
-        # 访问http://127.0.0.1:8000/stark/app01/userinfo/list/； self.model_class = app01.models.UserInfo
-        # 访问http://127.0.0.1:8000/stark/app02/role/list/； self.model_class = app02.models.Role
-        # 访问http://127.0.0.1:8000/stark/app02/host/list/； self.model_class =app02.models.Host
-        # self.models_class
 
-        # 1. 处理表格的表头
+        # ########## 1. 处理分页 ##########
+        all_count = self.model_class.objects.all().count()
+        query_params = request.GET.copy()
+        query_params._mutable = True
+
+        pager = Pagination(
+            current_page=request.GET.get('page'),
+            all_count=all_count,
+            base_url=request.path_info,
+            query_params=query_params,
+            per_page=self.per_page_count,
+        )
+
+        data_list = self.model_class.objects.all()[pager.start:pager.end]
+
+        # ########## 2. 处理表格 ##########
         display_list = self.get_display_list()
+        # 2.1 处理表格的表头
         header_list = []
         if display_list:
             for key in display_list:
@@ -77,8 +93,7 @@ class StarkHandler(object):
         else:
             header_list.append(self.model_class._meta.model_name)
 
-        # 2. 处理表的内容
-        data_list = self.model_class.objects.all()
+        # 2.2 处理表的内容
         body_list = []
         for row in data_list:
             tr_list = []
@@ -98,7 +113,8 @@ class StarkHandler(object):
             {
                 'data_list': data_list,
                 'header_list': header_list,
-                'body_list': body_list
+                'body_list': body_list,
+                'pager': pager,
             }
         )
 

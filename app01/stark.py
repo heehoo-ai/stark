@@ -24,6 +24,8 @@ class UserInfoHandler(StarkHandler):
                     StarkHandler.display_edit,
                     StarkHandler.display_del]
 
+    per_page_count = 1
+
     # def get_display_list(self):
     #
     #     return ['name', 'age']
