@@ -1,11 +1,42 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
+from types import FunctionType
+
 from django.conf.urls import url
 from django.shortcuts import HttpResponse, render
+from django.urls import reverse
+from django.utils.safestring import mark_safe
+
+def get_choice_text(title, field):
+    """
+    对于Stark组件中定义列时，choice如果想要显示中文信息，调用此方法
+    :param title: 希望页面显示的表头
+    :param field: 字段名称
+    :return:
+    """
+    def inner(self, obj=None, is_header=None):
+        if is_header:
+            return title
+        method = "get_%s_display" % field
+        return getattr(obj, method)()
+    return inner
 
 
 class StarkHandler(object):
     display_list = []
+
+    def display_edit(self, obj=None, is_header=False):
+        if is_header:
+            return "编辑"
+        name = "%s:%s" % (self.site.namespace, self.get_change_url_name)
+        # url = reverse(name, args=(obj.pk,))
+        return mark_safe('<a href="%s">编辑</a>' % reverse(name, args=(obj.pk,)))
+
+    def display_del(self, obj=None, is_header=False):
+        if is_header:
+            return "删除"
+        name = "%s:%s" % (self.site.namespace, self.get_delete_url_name)
+        return mark_safe('<a href="%s">删除</a>' % reverse(name, args=(obj.pk,)))
 
     def get_display_list(self):
         """
@@ -16,7 +47,8 @@ class StarkHandler(object):
         value.extend(self.display_list)
         return value
 
-    def __init__(self, model_class, prev):
+    def __init__(self, site, model_class, prev):
+        self.site = site
         self.model_class = model_class
         self.prev = prev
 
@@ -37,7 +69,10 @@ class StarkHandler(object):
         header_list = []
         if display_list:
             for key in display_list:
-                verbose_name = self.model_class._meta.get_field(key).verbose_name
+                if isinstance(key, FunctionType):
+                    verbose_name = key(self, obj=None, is_header=True)
+                else:
+                    verbose_name = self.model_class._meta.get_field(key).verbose_name
                 header_list.append(verbose_name)
         else:
             header_list.append(self.model_class._meta.model_name)
@@ -49,7 +84,10 @@ class StarkHandler(object):
             tr_list = []
             if display_list:
                 for key in display_list:
-                    tr_list.append(getattr(row,key))
+                    if isinstance(key, FunctionType):
+                        tr_list.append(key(self, row, is_header=False))
+                    else:
+                        tr_list.append(getattr(row, key))
             else:
                 tr_list.append(row)
             body_list.append(tr_list)
@@ -169,7 +207,8 @@ class StarkSite(object):
         """
         if not handler_class:
             handler_class = StarkHandler
-        self._registry.append({'model_class': model_class, 'handler': handler_class(model_class, prev), 'prev': prev})
+        self._registry.append(
+            {'model_class': model_class, 'handler': handler_class(self, model_class, prev), 'prev': prev})
 
     def get_urls(self):
         patterns = []

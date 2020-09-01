@@ -2,22 +2,30 @@
 # -*- coding:utf-8 -*-
 from django.conf.urls import url
 from django.shortcuts import HttpResponse
-from stark.service.v1 import site, StarkHandler
+from django.urls import reverse
+from django.utils.safestring import mark_safe
+
+from stark.service.v1 import site, StarkHandler, get_choice_text
 from app01 import models
 
 
 class DepartHandler(StarkHandler):
-    display_list = ['id', 'title']
+    display_list = ['id', 'title', StarkHandler.display_edit, StarkHandler.display_del]
 
 site.register(models.Depart, DepartHandler)
 
 
 class UserInfoHandler(StarkHandler):
+
     # 定制页面显示的列
-    display_list = ['name', 'age', 'email', 'depart']
+    display_list = ['name',
+                    get_choice_text('性别', 'gender'),
+                    'age', 'email', 'depart',
+                    StarkHandler.display_edit,
+                    StarkHandler.display_del]
 
-    def get_display_list(self):
-
-        return ['name', 'age']
+    # def get_display_list(self):
+    #
+    #     return ['name', 'age']
 
 site.register(models.UserInfo, UserInfoHandler)
