@@ -11,6 +11,7 @@ from app01 import models
 
 class DepartHandler(StarkHandler):
     display_list = ['id', 'title', StarkHandler.display_edit, StarkHandler.display_del]
+    has_add_btn = True
 
 site.register(models.Depart, DepartHandler)
 
@@ -25,6 +26,7 @@ class UserInfoHandler(StarkHandler):
                     StarkHandler.display_del]
 
     per_page_count = 1
+    has_add_btn = True
 
     # def get_display_list(self):
     #

@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
+import functools
 from types import FunctionType
 
 from django.conf.urls import url
+from django.http import QueryDict
 from django.shortcuts import HttpResponse, render
 from django.urls import reverse
 from django.utils.safestring import mark_safe
@@ -28,7 +30,14 @@ def get_choice_text(title, field):
 class StarkHandler(object):
     display_list = []
 
-    per_page_count = 1
+    per_page_count = 10
+
+    has_add_btn = True
+
+    def get_add_btn(self):
+        if self.has_add_btn:
+            return "<a class='btn btn-primary' href='%s'>添加</a>" % self.reverse_add_url()
+        return None
 
     def display_edit(self, obj=None, is_header=False):
         if is_header:
@@ -56,6 +65,7 @@ class StarkHandler(object):
         self.site = site
         self.model_class = model_class
         self.prev = prev
+        self.request = None
 
     def changelist_view(self, request):
         """
@@ -63,6 +73,7 @@ class StarkHandler(object):
         :param request:
         :return:
         """
+        self.request = request
 
         # ########## 1. 处理分页 ##########
         all_count = self.model_class.objects.all().count()
@@ -107,6 +118,8 @@ class StarkHandler(object):
                 tr_list.append(row)
             body_list.append(tr_list)
 
+        ############## 3. 添加按钮   ################
+        add_btn = self.get_add_btn()
         return render(
             request,
             'stark/changelist.html',
@@ -115,6 +128,7 @@ class StarkHandler(object):
                 'header_list': header_list,
                 'body_list': body_list,
                 'pager': pager,
+                'add_btn': add_btn,
             }
         )
 
@@ -185,12 +199,35 @@ class StarkHandler(object):
         """
         return self.get_url_name('delete')
 
+    def reverse_add_url(self):
+        """
+        # 根据别名反向生产URL,使URL带有记忆功能，包含之前搜索条件
+        :return:
+        """
+        name = "%s:%s" % (self.site.namespace, self.get_add_url_name)
+        base_url = reverse(name)
+        if not self.request.GET:
+            add_url = base_url
+        else:
+            param = self.request.GET.urlencode()
+            new_query_dict = QueryDict(mutable=True)
+            new_query_dict['_filter'] = param
+            add_url = "%s?%s" % (base_url, new_query_dict.urlencode())
+        return add_url
+
+    def wrapper(self, func):
+        @functools.wraps(func)
+        def inner(request, *args, **kwargs):
+            self.request = request
+            return func(request, *args, **kwargs)
+        return inner
+
     def get_urls(self):
         patterns = [
-            url(r'^list/$', self.changelist_view, name=self.get_list_url_name),
-            url(r'^add/$', self.add_view, name=self.get_add_url_name),
-            url(r'^change/(\d+)/$', self.change_view, name=self.get_change_url_name),
-            url(r'^delete/(\d+)/$', self.delete_view, name=self.get_delete_url_name),
+            url(r'^list/$', self.wrapper(self.changelist_view), name=self.get_list_url_name),
+            url(r'^add/$', self.wrapper(self.add_view), name=self.get_add_url_name),
+            url(r'^change/(\d+)/$', self.wrapper(self.change_view), name=self.get_change_url_name),
+            url(r'^delete/(\d+)/$', self.wrapper(self.delete_view), name=self.get_delete_url_name),
         ]
 
         patterns.extend(self.extra_urls())

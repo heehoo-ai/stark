@@ -2,6 +2,13 @@
 
 {% block content %}
     <div class="luffy-container">
+
+        {% if add_btn %}
+            <div style="margin: 5px 0;">
+                {{ add_btn|safe }}
+            </div>
+        {% endif %}
+
         <table class="table table-bordered">
             <thead>
             <tr>
