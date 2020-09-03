@@ -31,3 +31,9 @@ class Project(models.Model):
     项目表
     """
     title = models.CharField(verbose_name='项目名称', max_length=32)
+    server = models.ForeignKey(to=Host, verbose_name="服务器", max_length=32, on_delete=models.DO_NOTHING)
+    status_choices = (
+        (1, '在建'),
+        (2, "验收")
+    )
+    status = models.IntegerField(verbose_name="状态", choices=status_choices, default=1)
